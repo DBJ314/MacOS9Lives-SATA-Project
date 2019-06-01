@@ -1,0 +1,70 @@
+name: "pci1095,7124"
+vendor-id: 1095
+device-id: 2124
+subsystem-vendor-id: 1095
+subsystem-id: 7124
+
+assigned address order:
+	0: indirect IO registers
+	1: expansion rom
+	2: slot registers
+	3: global registers
+	
+Raw Name Registry Data:
+
+
+Devices:device-tree:pci:pci1095,7124
+name = "pci1095,7124"
+vendor-id = [00001095 = 4245]
+device-id = [00003124 = 12580]
+revision-id = [00000002 = 2]
+class-code = [00010400 = 66560]
+interrupts = [00000001 = 1]
+AAPL,interrupt-vectors = [00000036 = 54]
+AAPL,interrupt-priorities = [00000002 = 2]
+AAPL,interrupts = [00000025 = 37]
+AAPL,interrupt-index = [0000001b = 27]
+min-grant = [00000000 = 0]
+max-latency = [00000000 = 0]
+subsystem-vendor-id = [00001095 = 4245]
+subsystem-id = [00007124 = 28964]
+devsel-speed = [00000001 = 1]
+fast-back-to-back
+compatible
+0000: 70 63 69 31 30 39 35 2c 37 31 32 34 00 70 63 69 pci1095,7124.pci
+0010: 31 30 39 35 2c 33 31 32 34 00 70 63 69 63 6c 61 1095,3124.pcicla
+0020: 73 73 2c 30 31 30 34 30 30 00                   ss,010400.
+* 42 total bytes *
+reg
+bus 0, dev 20, func 0, reg 0 (Config) rel, 0000a000 00000000 00000000
+bus 0, dev 20, func 0, reg 16 (64-bit) rel, 0300a010 00000000 00000080
+bus 0, dev 20, func 0, reg 24 (64-bit) rel, 0300a018 00000000 00008000
+bus 0, dev 20, func 0, reg 32 (I/O) rel, 0100a020 00000000 00000010
+bus 0, dev 20, func 0, reg 48 (Mem) rel, 0200a030 00000000 00080000
+0000: 00 00 a0 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
+0010: 00 00 00 00 03 00 a0 10 00 00 00 00 00 00 00 00 ................
+0020: 00 00 00 00 00 00 00 80 03 00 a0 18 00 00 00 00 ................
+0030: 00 00 00 00 00 00 00 00 00 00 80 00 01 00 a0 20 ............... 
+0040: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 10 ................
+0050: 02 00 a0 30 00 00 00 00 00 00 00 00 00 00 00 00 ...0............
+0060: 00 08 00 00                                     ....
+* 100 total bytes *
+assigned-addresses
+bus 0, dev 20, func 0, reg 32 (I/O) abs, 8100a020 00000800 00000010
+bus 0, dev 20, func 0, reg 48 (Mem) abs, 8200a030 80100000 00080000
+bus 0, dev 20, func 0, reg 24 (64-bit) abs, 8300a018 80090000 00008000
+bus 0, dev 20, func 0, reg 16 (64-bit) abs, 8300a010 80080000 00000080
+0000: 81 00 a0 20 00 00 00 00 00 00 08 00 00 00 00 00 ... ............
+0010: 00 00 00 10 82 00 a0 30 00 00 00 00 80 10 00 00 .......0........
+0020: 00 00 00 00 00 08 00 00 83 00 a0 18 00 00 00 00 ................
+0030: 80 09 00 00 00 00 00 00 00 00 80 00 83 00 a0 10 ................
+0040: 00 00 00 00 80 08 00 00 00 00 00 00 00 00 00 80 ................
+* 80 total bytes *
+AAPL,address
+0000: f2 00 08 00 80 10 00 00 80 09 00 00 80 08 00 00 ................
+* 16 total bytes *
+AAPL,slot-name = "SLOT-4"
+driver-ist
+0000: 00 1a 93 c0 00 00 00 14 00 00 00 00 00 00 00 00 ................
+0010: 00 00 00 00 00 00 00 00                         ........
+* 24 total bytes *
