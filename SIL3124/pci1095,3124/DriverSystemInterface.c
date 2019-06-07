@@ -102,6 +102,7 @@ OSErr HandleFinalize(DriverFinalInfoPtr finalInfo){
 	return noErr;
 }
 OSErr HandleOpen(ParmBlkPtr pb){
+#pragma unused(pb)
 	return noErr;
 }
 

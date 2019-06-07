@@ -11,7 +11,7 @@ Includes        =
 
 Sym-PPC         = -sym off
 
-PPCCOptions     = {Includes} {Sym-PPC} 
+PPCCOptions     = {Includes} {Sym-PPC} -opt local -opt size,warn_uninit,warn_maybe_uninit
 
 PPCAOptions     = {Includes} {Sym-PPC}
 

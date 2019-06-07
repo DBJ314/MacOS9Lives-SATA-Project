@@ -29,6 +29,8 @@ enum {
 PCIAssignedAddress chipsetPhysAddrs[kChipsetAddressCnt];
 LogicalAddress chipsetVirtAddrs[kChipsetAddressCnt];
 
+InterruptSetMember chipsetInterrupts;
+
 /* DriverSystemInterface.c */
 OSErr CFMInitialize();
 
