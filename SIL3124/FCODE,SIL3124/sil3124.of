@@ -1,0 +1,75 @@
+\ sil3124 main driver
+
+tokenizer[ hex 1095 3124 010400 ]tokenizer
+pci-header
+fcode-version2
+
+hex
+
+" SIL3124" device-name
+
+" SIL3124,Main" encode-string
+" pci1095,3124" encode-string encode+
+" compatible" property
+
+0 0 my-space encode-phys						\ config space
+	0 encode-int encode+ 0 encode-int encode+
+0 0 03000010 my-space or encode-phys encode+	\ base reg 0: globals
+	0 encode-int encode+ 80 encode-int encode+
+0 0 03000018 my-space or encode-phys encode+	\ base reg 1: slots
+	0 encode-int encode+ 8000 encode-int encode+
+0 0 01000020 my-space or encode-phys encode+	\ base reg 2: io
+	0 encode-int encode+ 10 encode-int encode+
+0 0 02000030 my-space or encode-phys encode+	\ exp rom: flash
+	0 encode-int encode+ 80000 encode-int encode+
+" reg" property
+
+fload :hardware-registers.of
+
+0 value chipset.globals
+0 value chipset.ports
+0 value chipset.io
+0 value chipset.flash
+
+0 value open-count
+
+: parent-map-in	" map-in" $call-parent ;
+: parent-map-out " map-out" $call-parent ;
+
+: map-self
+	" assigned-addresses" get-my-property
+	abort" SIL3124: unable to get assigned-addresses property"
+	
+	dup 4 5 4 * * <> if 2drop false exit then \ "assigned-addresses must be 4 entries long
+	4 0 do
+		decode-phys ( aa.adr aa.len phys.lo phys.med phys.hi )
+		dup ff and case \ switch on register number
+			10 of 80 parent-map-in to chipset.globals endof
+			18 of 8000 parent-map-in to chipset.ports endof
+			20 of 10 parent-map-in to chipset.io endof
+			30 of 80000 parent-map-in to chipset.flash endof
+			
+			dup of true abort" SIL3124: unknown assign-addresses base register" endof
+		endcase
+		decode-int drop decode-int drop
+	loop
+	2drop
+;
+
+: unmap-self
+	chipset.globals 80 parent-map-out 0 to chipset.globals
+	chipset.ports 8000 parent-map-out 0 to chipset.ports
+	chipset.io 10 parent-map-out 0 to chipset.io
+	chipset.flash 80000 parent-map-out 0 to chipset.flash
+;
+
+: open
+	open-count 0 = if
+		map-self
+	
+	then
+	true
+;
+	
+fcode-end
+pci-end

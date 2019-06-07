@@ -1,0 +1,76 @@
+\ child nodes and methods
+\ methods discovered by reading ata interface module docs and scouring Open Firmware
+
+new-device
+
+" sil3124,port0" device-name
+
+" ata" device-type \ aim docs might need this to have cr in type?
+
+" sil3124,ata" encode-string " compatible" property
+
+0 constant my-port
+
+: open true ;
+: close ;
+
+: ata-command  my-port " port-ata-command" $call-parent ;
+: atapi-command my-port " port-atapi-command" $call-parent ;
+: wait-bsy my-port " port-wait-bsy" $call-parent ;
+
+: atapi? my-port " port-atapi?" $call-parent ;
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+new-device
+
+" disk" device-name
+
+" block" device-type
+
+: ata-command " ata-command" $call-parent ;
+: atapi-command " atapi-command" $call-parent ;
+: wait-bsy " wait-bsy" $call-parent ;
+
+: atapi? " atapi?" $call-parent ;
+
+: our-bus-id 2 ; \ the OF pata impl I looked at returned 2. I am not sure what to do here
+
+\ lots of the ata-disk and atapi-disk methods are very easy to implement on SATA :)
+
+: dev@ 0 ; \ SATA only has dev 0 (unless chipset specifically merges 2 buses)
+: set-drive-select ;
+
+: use-atapi-interface ; \ I will assume this is pointless until proven otherwise
+
+: set-my-multiple drop ; \ probably useless
+
+: set-ultra-timer drop ;
+: set-dma-timer drop ;
+: set-pio-timer drop ;
+
+: open 
+	my-args
+	atapi? 
+	if " atapi-disk" else " ata-disk then
+	tokenizer[ 01 c, 2b c, ]tokenizer \ I am not sure if the tokenizer supports "interpose"
+	true
+;
+
+: close ;
+
+
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+finish-device
+
+finish-device

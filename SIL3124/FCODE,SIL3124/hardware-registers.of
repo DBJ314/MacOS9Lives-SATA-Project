@@ -1,0 +1,145 @@
+\ hardware register definitions of SIL3124
+\ taken from http://www.alldatasheet.com/datasheet-pdf/pdf/218215/SILICONIMAGE/SIL3124ACBHU.html
+
+struct 80 constant /gb ( Global Base )
+	04 field >gb.status.port0
+	04 field >gb.status.port1
+	04 field >gb.status.port2
+	04 field >gb.status.port3
+	30 +
+	04 field >gb.control
+	04 field >gb.interrupt-status
+	04 field >gb.phy-config
+	04 +
+	04 field >gb.bist.control
+	04 field >gb.bist.pattern
+	04 field >gb.bist.status
+	14 +
+	04 field >gb.flash.address
+	04 field >gb.flash.data
+	04 field >gb.i2c.address
+	04 field >gb.i2c.control
+/gb <> throw
+
+\ global control bits
+80000000 constant global-reset
+40000000 constant msi-ack
+20000000 constant i2c-int-en
+10000000 constant perr-report-dis
+01000000 constant 3gbps-capable
+00100000 constant pci-req64
+00080000 constant pci-devsel
+00040000 constant pci-stop
+00020000 constant pci-trdy
+00010000 constant pci-m66-en
+00000008 constant port3-int-en
+00000004 constant port2-int-en
+00000002 constant port1-int-en
+00000001 constant port0-int-en
+
+struct 10 constant /sge ( Scatter/Gather Entry )
+	4 field >sge.adr.lo
+	4 field >sge.adr.hi
+	4 field >sge.cnt
+	4 field >sge.flags
+/sge <> throw
+
+\ sge flags
+80000000 constant sge-trm \ last sge
+40000000 constant sge-lnk \ points to sgt instead of data
+20000000 constant sge-drd \ discard data read for cnt bytes
+10000000 constant sge-xcf \ external command fetch
+
+/sge 4 * constant /sgt ( Scatter/Gather Table )
+
+struct 40 constant /prb ( Port Request Block )
+	02 field >prb.control
+	02 field >prb.protocol-override
+	04 field >prb.recieved-transfer-cnt
+	02 field >prb.fis-core \ FIS type and PMP
+	
+	\ Lots of IDE & ATA regs. Not interpreted by this driver
+	01 field >prb.ide.command 
+	01 field >prb.ide.features 
+	01 field >prb.ide.sector#
+	01 field >prb.ide.cyl.lo
+	01 field >prb.ide.cyl.hi
+	01 field >prb.ide.head
+	01 field >prb.ide.sector#.exp
+	01 field >prb.ide.cyl.lo.exp
+	01 field >prb.ide.cyl.hi.exp
+	01 field >prb.ide.features.exp
+	01 field >prb.ide.sector-cnt
+	01 field >prb.ide.sector-cnt.exp
+	01 +
+	01 field >prb.ide.control
+	08 +
+	
+	/sge field >prb.sge0
+	
+	\ sge0 has different meaning for ATAPI cmds
+	: >prb.cdb >prb.sge0 ;
+	
+	/sge field >prg.sge1
+/prb <> throw
+
+struct 80 constant /cs ( Command Slot )
+	/prb field >cs.prb
+	
+	\ command activation register low and high
+	0004 field >cs.car.lo
+	0004 field >cs.car.hi
+	
+	/sgt field >cs.sgt
+/cs <> throw
+
+struct 8 constant /pd ( Port Multiplier Device )
+	4 field >pd.status
+	4 field >pd.qactive
+/pd <> throw
+
+: >slot 7 << + ;
+
+: >pmdev 3 << + ;
+
+struct 2000 constant /pr ( Port Registers )
+	/cs 1F * field >pr.commands \ access slot n with >pr.commands n >slot
+	/pd 10 * field >pr.pm-devs \ access dev n with >pr.pm-devs n >pmdev
+	
+	04 field >pr.control.set \ writing ones sets bits, reading reveals
+	04 field >pr.control.clr \ writing ones clears bits
+	
+	04 field >pr.interrupt.status
+	04 +
+	04 field >pr.interrupt.enable.set
+	04 field >pr.interrupt.enable.clr
+	04 +
+	
+	\ used in 32 bit mode to fill in activation.hi when .lo is written
+	04 field >pr.activation-adr.hi
+	
+	04 field >pr.cmd.fifo
+	04 field >pr.cmd.error
+	04 field >pr.fis-config
+	04 field >pr.pci-request-threshold
+	10 +
+	04 field >pr.error-cnt.8b/10b
+	04 field >pr.error-cnt.crc
+	04 field >pr.error-cnt.handshake
+	04 +
+	04 field >pr.phy-config
+	7AC +
+	04 field >pr.slot-status
+	3FC +
+	08 1F * field >pr.cars \ shadow command activation registers for cmd slots
+	10C +
+	04 field >pr.context
+	0F8 +
+	04 field >pr.s.control
+	04 field >pr.s.status
+	04 field >pr.s.error
+	04 field >pr.s.active
+	0F0 +
+/pr <> throw
+
+: >port D << + ; \ accesses a specific port when given base register 2
