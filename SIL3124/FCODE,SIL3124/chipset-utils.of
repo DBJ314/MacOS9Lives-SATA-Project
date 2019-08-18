@@ -1,0 +1,113 @@
+\ functions that apply to chipset as a whole
+
+\ use rb@ rw@ rl@ rb! rw! rl! for chipset accesses
+\ they helpfully flip bytes for you
+\ only use lbflip and wbflip on stuff in main memory
+
+: select-port
+	" select-port" type cr
+	dup to current-port#
+	chipset.ports swap >port to portregs
+;
+
+: sync-prb prb-cpu prb-dev /prb dma-sync ;
+
+: wait-for-ready
+	" wait-for-ready" type cr
+	begin
+		" wait-for-ready: looping" type cr
+		10 ms
+		portregs >pr.status rl@ pr-ready and
+		portregs >pr.slot-status rl@ 80000000 and or
+	until \ loop until ready condition or attention condition
+;
+
+: chipset-reset
+	" chipset-reset" type cr
+	global-reset chipset.globals >gb.control tuck rl!
+	10 ms \ hopefully this is long enough (datasheet doesn't say)
+	perr-report-dis swap rl! \ parity errors MUST  be disabled
+;
+
+: port-reset \ assumes port already selected by port reset
+	" port-reset" type cr
+	\ reset port
+	pr-port-reset portregs >pr.control.set rl!
+	10 ms
+	pr-port-reset portregs >pr.control.clr rl!
+	
+	\ setup 32-bit mode
+	pr-32-bit-activation portregs >pr.control.set rl!
+	0 portregs >pr.activation-adr.hi rl!
+;
+
+: port-initialize
+	pr-port-init portregs >pr.control.set rl!
+	begin
+		portregs >pr.status rl@ pr-port-init and not
+	until
+;
+
+: global-init
+	" global-init" type cr
+	chipset-reset
+	
+	/prb dma-alloc dup 0= if abort then
+	to prb-cpu
+	
+	prb-cpu /prb true dma-map-in dup 0= if abort then 
+	to prb-dev
+	
+	4 0 do
+		I select-port
+		
+		port-reset
+		
+		200 ms \ wait 2 OOB delay intervals
+		
+		\ check if PHY succeeds at finding a device
+		
+		portregs >pr.s.status rl@
+		pr-status-det and det-dev-nofail = if
+		
+			\ send a soft-reset and check signature for atapi devices
+			prb-cpu /prb erase
+			
+			wait-for-ready
+			
+			prb-soft-reset wbflip prb-cpu >prb.control w!
+			
+			0 wbflip prb-cpu >prb.fis-core w! \ change to f00 to support port multipliers
+			
+			sync-prb
+			
+			" global-init: sending soft-reset" type cr
+			
+			prb-dev portregs >pr.commands 0 >slot-car rl! \ send the command
+			
+			begin
+				" global-init: looping" type cr
+				portregs >pr.interrupt.status rl@ 30003 and
+			until \ wait until command completion or error
+			
+			30003 portregs >pr.interrupt.status rl!
+			
+			portregs >pr.commands 0 >slot >cs.prb >r
+			r@ >prb.ide.cyl.hi rb@ r@ >prb.ide.cyl.lo rb@ r@ >prb.ide.sector# rb@ r> >prb.ide.sector-cnt rb@
+			bljoin
+			case
+				010114EB of \ ATAPI disk
+					" global-init: atapi-disk" type cr
+					2 I 3 << << disk-protocols or to disk-protocols
+					1 I 3 << << disk-present or to disk-present \ mark as ATAPI
+				endof
+				01010000 of \ ATA disk
+					" global-init: ata-disk" type cr
+					1 I 3 << << disk-protocols or to disk-protocols \ mark as ATA
+					1 I 3 << << disk-present or to disk-present
+				endof
+				dup of endof \ no device
+			endcase
+		then
+	loop
+;

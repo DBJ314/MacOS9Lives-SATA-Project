@@ -1,25 +1,29 @@
 \ hardware register definitions of SIL3124
 \ taken from http://www.alldatasheet.com/datasheet-pdf/pdf/218215/SILICONIMAGE/SIL3124ACBHU.html
 
-struct 80 constant /gb ( Global Base )
-	04 field >gb.status.port0
-	04 field >gb.status.port1
-	04 field >gb.status.port2
-	04 field >gb.status.port3
-	30 +
-	04 field >gb.control
-	04 field >gb.interrupt-status
-	04 field >gb.phy-config
-	04 +
-	04 field >gb.bist.control
-	04 field >gb.bist.pattern
-	04 field >gb.bist.status
-	14 +
-	04 field >gb.flash.address
-	04 field >gb.flash.data
-	04 field >gb.i2c.address
-	04 field >gb.i2c.control
-/gb <> throw
+0 encode-int " sprog" property
+
+struct ( Global Base )
+	( 00 ) 04 field >gb.status.port0
+	( 04 ) 04 field >gb.status.port1
+	( 08 ) 04 field >gb.status.port2
+	( 0C ) 04 field >gb.status.port3
+	( 10 ) 30 +
+	( 40 ) 04 field >gb.control
+	( 44 ) 04 field >gb.interrupt-status
+	( 48 ) 04 field >gb.phy-config
+	( 4C ) 04 +
+	( 50 ) 04 field >gb.bist.control
+	( 54 ) 04 field >gb.bist.pattern
+	( 58 ) 04 field >gb.bist.status
+	( 5C ) 14 +
+	( 70 ) 04 field >gb.flash.address
+	( 74 ) 04 field >gb.flash.data
+	( 78 ) 04 field >gb.i2c.address
+	( 7C ) 04 field >gb.i2c.control
+constant /gb \ 80
+
+1 encode-int " sprog" property
 
 \ global control bits
 80000000 constant global-reset
@@ -37,12 +41,14 @@ struct 80 constant /gb ( Global Base )
 00000002 constant port1-int-en
 00000001 constant port0-int-en
 
-struct 10 constant /sge ( Scatter/Gather Entry )
-	4 field >sge.adr.lo
-	4 field >sge.adr.hi
-	4 field >sge.cnt
-	4 field >sge.flags
-/sge <> throw
+struct ( Scatter/Gather Entry )
+	( 00 ) 4 field >sge.adr.lo
+	( 04 ) 4 field >sge.adr.hi
+	( 08 ) 4 field >sge.cnt
+	( 0C ) 4 field >sge.flags
+constant /sge \ 10
+
+2 encode-int " sprog" property
 
 \ sge flags
 80000000 constant sge-trm \ last sge
@@ -52,94 +58,160 @@ struct 10 constant /sge ( Scatter/Gather Entry )
 
 /sge 4 * constant /sgt ( Scatter/Gather Table )
 
-struct 40 constant /prb ( Port Request Block )
-	02 field >prb.control
-	02 field >prb.protocol-override
-	04 field >prb.recieved-transfer-cnt
-	02 field >prb.fis-core \ FIS type and PMP
+3 encode-int " sprog" property
+
+struct ( Port Request Block )
+	( 00 ) 02 field >prb.control
+	( 02 ) 02 field >prb.protocol-override
+	( 04 ) 04 field >prb.recieved-transfer-cnt
+	( 08 ) 02 field >prb.fis-core \ FIS type and PMP
 	
 	\ Lots of IDE & ATA regs. Not interpreted by this driver
-	01 field >prb.ide.command 
-	01 field >prb.ide.features 
-	01 field >prb.ide.sector#
-	01 field >prb.ide.cyl.lo
-	01 field >prb.ide.cyl.hi
-	01 field >prb.ide.head
-	01 field >prb.ide.sector#.exp
-	01 field >prb.ide.cyl.lo.exp
-	01 field >prb.ide.cyl.hi.exp
-	01 field >prb.ide.features.exp
-	01 field >prb.ide.sector-cnt
-	01 field >prb.ide.sector-cnt.exp
-	01 +
-	01 field >prb.ide.control
-	08 +
+	( 0A ) 01 field >prb.ide.command 
+	( 0B ) 01 field >prb.ide.features 
+	( 0C ) 01 field >prb.ide.sector#
+	( 0D ) 01 field >prb.ide.cyl.lo
+	( 0E ) 01 field >prb.ide.cyl.hi
+	( 0F ) 01 field >prb.ide.head
+	( 10 ) 01 field >prb.ide.sector#.exp
+	( 11 ) 01 field >prb.ide.cyl.lo.exp
+	( 12 ) 01 field >prb.ide.cyl.hi.exp
+	( 13 ) 01 field >prb.ide.features.exp
+	( 14 ) 01 field >prb.ide.sector-cnt
+	( 15 ) 01 field >prb.ide.sector-cnt.exp
+	( 16 ) 01 +
+	( 17 ) 01 field >prb.ide.control
+	( 18 ) 08 +
 	
-	/sge field >prb.sge0
+	( 20 ) /sge field >prb.sge0
 	
 	\ sge0 has different meaning for ATAPI cmds
-	: >prb.cdb >prb.sge0 ;
+	( 20 ) : >prb.cdb >prb.sge0 ;
 	
-	/sge field >prg.sge1
-/prb <> throw
+	( 30 ) /sge field >prb.sge1
+constant /prb \ 40
 
-struct 80 constant /cs ( Command Slot )
-	/prb field >cs.prb
-	
-	\ command activation register low and high
-	0004 field >cs.car.lo
-	0004 field >cs.car.hi
-	
-	/sgt field >cs.sgt
-/cs <> throw
+4 encode-int " sprog" property
 
-struct 8 constant /pd ( Port Multiplier Device )
-	4 field >pd.status
-	4 field >pd.qactive
-/pd <> throw
+\ prb control flags
+0080 constant prb-soft-reset
+0040 constant prb-mask-interrupt
+0020 constant prb-packet-write
+0010 constant prb-packet-read
+0008 constant prb-recieve
+0004 constant prb-ext-cmd
+0002 constant prb-retransmit
+0001 constant prb-protocol-override
+
+\ prb protocol override flags
+20 constant prb-protocol-transparent
+10 constant prb-protocol-write
+08 constant prb-protocol-read
+04 constant prb-protocol-native-queue
+02 constant prb-protocol-legacy-queue
+01 constant prb-protocol-packet
+
+
+struct ( Command Slot )
+	( 00 ) /prb field >cs.prb
+	
+	\ command activation register low and high (overlaps sgt?)
+	40    0004 field >cs.car.lo drop
+	44    0004 field >cs.car.hi drop
+	
+	( 40 ) /sgt field >cs.sgt
+constant /cs \ 80
+
+5 encode-int " sprog" property
+struct ( Port Multiplier Device )
+	( 00 ) 4 field >pd.status
+	( 04 ) 4 field >pd.qactive
+constant /pd \ 08
+
+6 encode-int " sprog" property
 
 : >slot 7 << + ;
 
 : >pmdev 3 << + ;
 
-struct 2000 constant /pr ( Port Registers )
-	/cs 1F * field >pr.commands \ access slot n with >pr.commands n >slot
-	/pd 10 * field >pr.pm-devs \ access dev n with >pr.pm-devs n >pmdev
+struct ( Port Registers )
+	( 0000 ) /cs 1F * field >pr.commands \ access slot n with >pr.commands n >slot
+	( 0F80 ) /pd 10 * field >pr.pm-devs \ access dev n with >pr.pm-devs n >pmdev
 	
-	04 field >pr.control.set \ writing ones sets bits, reading reveals
-	04 field >pr.control.clr \ writing ones clears bits
+	( 1000 ) 04 field >pr.control.set \ writing ones sets bits, reading reveals
+	( 1000 ) : >pr.status >pr.control.set ;
 	
-	04 field >pr.interrupt.status
-	04 +
-	04 field >pr.interrupt.enable.set
-	04 field >pr.interrupt.enable.clr
-	04 +
+	( 1004 ) 04 field >pr.control.clr \ writing ones clears bits
+	
+	( 1008 ) 04 field >pr.interrupt.status
+	( 100C ) 04 +
+	( 1010 ) 04 field >pr.interrupt.enable.set
+	( 1014 ) 04 field >pr.interrupt.enable.clr
+	( 1018 ) 04 +
 	
 	\ used in 32 bit mode to fill in activation.hi when .lo is written
-	04 field >pr.activation-adr.hi
+	( 101C ) 04 field >pr.activation-adr.hi
 	
-	04 field >pr.cmd.fifo
-	04 field >pr.cmd.error
-	04 field >pr.fis-config
-	04 field >pr.pci-request-threshold
-	10 +
-	04 field >pr.error-cnt.8b/10b
-	04 field >pr.error-cnt.crc
-	04 field >pr.error-cnt.handshake
-	04 +
-	04 field >pr.phy-config
-	7AC +
-	04 field >pr.slot-status
-	3FC +
-	08 1F * field >pr.cars \ shadow command activation registers for cmd slots
-	10C +
-	04 field >pr.context
-	0F8 +
-	04 field >pr.s.control
-	04 field >pr.s.status
-	04 field >pr.s.error
-	04 field >pr.s.active
-	0F0 +
-/pr <> throw
+	( 1020 ) 04 field >pr.cmd.fifo
+	( 1024 ) 04 field >pr.cmd.error
+	( 1028 ) 04 field >pr.fis-config
+	( 102C ) 04 field >pr.pci-request-threshold
+	( 1030 ) 10 +
+	( 1040 ) 04 field >pr.error-cnt.8b/10b
+	( 1044 ) 04 field >pr.error-cnt.crc
+	( 1048 ) 04 field >pr.error-cnt.handshake
+	( 104C ) 04 +
+	( 1050 ) 04 field >pr.phy-config
+	( 1054 ) 7AC +
+	( 1800 ) 04 field >pr.slot-status
+	( 1804 ) 3FC +
+	( 1C00 ) 08 1F * field >pr.cars \ command activation registers for cmd slots
+	( 1CF8 ) 10C +
+	( 1E04 ) 04 field >pr.context
+	( 1E08 ) 0F8 +
+	( 1F00 ) 04 field >pr.s.control
+	( 1F04 ) 04 field >pr.s.status
+	( 1F08 ) 04 field >pr.s.error
+	( 1F0C ) 04 field >pr.s.active
+	( 1F10 ) 0F0 +
+constant /pr \ 2000 
+
+7 encode-int " sprog" property
+
+\ port control/status flags
+80000000 constant pr-ready
+02000000 constant pr-oob-bypass
+001F0000 constant pr-active-slot
+00008000 constant pr-led-on
+00004000 constant pr-auto-interlock-accept
+00002000 constant pr-pm-enable
+00001000 constant pr-interlock-accept
+00000800 constant pr-interlock-reject
+00000400 constant pr-32-bit-activation
+00000200 constant pr-scrambler-disable
+00000100 constant pr-cont-disable
+00000080 constant pr-transmit-bist
+00000040 constant pr-resume
+00000020 constant pr-packet-len
+00000010 constant pr-led-disable
+00000008 constant pr-interrupt-no-clear-on-read
+00000004 constant pr-port-init
+00000002 constant pr-device-reset
+00000001 constant pr-port-reset
+
+
+\ port SStatus bits
+0000000F constant pr-status-det
+000000F0 constant pr-status-spd
+00000F00 constant pr-status-ipm
+
+1 constant det-dev
+2 constant det-nofail
+
+det-dev det-nofail or constant det-dev-nofail
 
 : >port D << + ; \ accesses a specific port when given base register 2
+
+: >slot-car 3 << swap >pr.cars + ;
+
+8 encode-int " sprog" property

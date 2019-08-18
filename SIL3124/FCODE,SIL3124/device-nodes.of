@@ -1,6 +1,9 @@
 \ child nodes and methods
 \ methods discovered by reading ata interface module docs and scouring Open Firmware
 
+\ I don't know how to loop over new-device, so I will just duplicate code. Be very careful...
+
+\ port 0
 new-device
 
 " sil3124,port0" device-name
@@ -18,7 +21,9 @@ new-device
 : atapi-command my-port " port-atapi-command" $call-parent ;
 : wait-bsy my-port " port-wait-bsy" $call-parent ;
 
-: atapi? my-port " port-atapi?" $call-parent ;
+: get-my-protocols my-port " port-protocols" $call-parent ;
+
+: disk-present? my-port " port-disk-present?" $call-parent ;
 
 : dma-alloc " dma-alloc" $call-parent ;
 : dma-free " dma-free" $call-parent ;
@@ -36,8 +41,9 @@ new-device
 : atapi-command " atapi-command" $call-parent ;
 : wait-bsy " wait-bsy" $call-parent ;
 
-: atapi? " atapi?" $call-parent ;
+: get-my-protocols " get-my-protocols" $call-parent ;
 
+: disk-present? " disk-present?" $call-parent ;
 : our-bus-id 2 ; \ the OF pata impl I looked at returned 2. I am not sure what to do here
 
 \ lots of the ata-disk and atapi-disk methods are very easy to implement on SATA :)
@@ -53,11 +59,272 @@ new-device
 : set-dma-timer drop ;
 : set-pio-timer drop ;
 
+: my-max-ultra 7 ;
+
 : open 
-	my-args
-	atapi? 
-	if " atapi-disk" else " ata-disk then
-	tokenizer[ 01 c, 2b c, ]tokenizer \ I am not sure if the tokenizer supports "interpose"
+	disk-present? 0= if false exit then
+	get-my-protocols 2 = 
+	if " atapi-disk" else " ata-disk" then
+	find-package if 
+		my-args rot " interpose" evaluate \ I'm not sure tokenizer supports "interpose"
+	else
+		false exit
+	then
+	true
+;
+
+: close ;
+
+
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+finish-device
+
+finish-device
+
+\ port 1
+
+new-device
+
+" sil3124,port1" device-name
+
+" ata" device-type \ aim docs might need this to have cr in type?
+
+" sil3124,ata" encode-string " compatible" property
+
+1 constant my-port
+
+: open true ;
+: close ;
+
+: ata-command  my-port " port-ata-command" $call-parent ;
+: atapi-command my-port " port-atapi-command" $call-parent ;
+: wait-bsy my-port " port-wait-bsy" $call-parent ;
+
+: get-my-protocols my-port " port-protocols" $call-parent ;
+
+: disk-present? my-port " port-disk-present?" $call-parent ;
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+new-device
+
+" disk" device-name
+
+" block" device-type
+
+: ata-command " ata-command" $call-parent ;
+: atapi-command " atapi-command" $call-parent ;
+: wait-bsy " wait-bsy" $call-parent ;
+
+: get-my-protocols " get-my-protocols" $call-parent ;
+
+: disk-present? " disk-present?" $call-parent ;
+: our-bus-id 2 ; \ the OF pata impl I looked at returned 2. I am not sure what to do here
+
+\ lots of the ata-disk and atapi-disk methods are very easy to implement on SATA :)
+
+: dev@ 0 ; \ SATA only has dev 0 (unless chipset specifically merges 2 buses)
+: set-drive-select ;
+
+: use-atapi-interface ; \ I will assume this is pointless until proven otherwise
+
+: set-my-multiple drop ; \ probably useless
+
+: set-ultra-timer drop ;
+: set-dma-timer drop ;
+: set-pio-timer drop ;
+
+: my-max-ultra 7 ;
+
+: open 
+	disk-present? 0= if false exit then
+	get-my-protocols 2 = 
+	if " atapi-disk" else " ata-disk" then
+	find-package if 
+		my-args rot " interpose" evaluate \ I'm not sure tokenizer supports "interpose"
+	else
+		false exit
+	then
+	true
+;
+
+: close ;
+
+
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+finish-device
+
+finish-device
+
+\ port 2
+
+new-device
+
+" sil3124,port2" device-name
+
+" ata" device-type \ aim docs might need this to have cr in type?
+
+" sil3124,ata" encode-string " compatible" property
+
+2 constant my-port
+
+: open true ;
+: close ;
+
+: ata-command  my-port " port-ata-command" $call-parent ;
+: atapi-command my-port " port-atapi-command" $call-parent ;
+: wait-bsy my-port " port-wait-bsy" $call-parent ;
+
+: get-my-protocols my-port " port-protocols" $call-parent ;
+
+: disk-present? my-port " port-disk-present?" $call-parent ;
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+new-device
+
+" disk" device-name
+
+" block" device-type
+
+: ata-command " ata-command" $call-parent ;
+: atapi-command " atapi-command" $call-parent ;
+: wait-bsy " wait-bsy" $call-parent ;
+
+: get-my-protocols " get-my-protocols" $call-parent ;
+
+: disk-present? " disk-present?" $call-parent ;
+: our-bus-id 2 ; \ the OF pata impl I looked at returned 2. I am not sure what to do here
+
+\ lots of the ata-disk and atapi-disk methods are very easy to implement on SATA :)
+
+: dev@ 0 ; \ SATA only has dev 0 (unless chipset specifically merges 2 buses)
+: set-drive-select ;
+
+: use-atapi-interface ; \ I will assume this is pointless until proven otherwise
+
+: set-my-multiple drop ; \ probably useless
+
+: set-ultra-timer drop ;
+: set-dma-timer drop ;
+: set-pio-timer drop ;
+
+: my-max-ultra 7 ;
+
+: open 
+	disk-present? 0= if false exit then
+	get-my-protocols 2 = 
+	if " atapi-disk" else " ata-disk" then
+	find-package if 
+		my-args rot " interpose" evaluate \ I'm not sure tokenizer supports "interpose"
+	else
+		false exit
+	then
+	true
+;
+
+: close ;
+
+
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+finish-device
+
+finish-device
+
+\ port 3
+
+new-device
+
+" sil3124,port3" device-name
+
+" ata" device-type \ aim docs might need this to have cr in type?
+
+" sil3124,ata" encode-string " compatible" property
+
+3 constant my-port
+
+: open true ;
+: close ;
+
+: ata-command  my-port " port-ata-command" $call-parent ;
+: atapi-command my-port " port-atapi-command" $call-parent ;
+: wait-bsy my-port " port-wait-bsy" $call-parent ;
+
+: get-my-protocols my-port " port-protocols" $call-parent ;
+
+: disk-present? my-port " port-disk-present?" $call-parent ;
+
+: dma-alloc " dma-alloc" $call-parent ;
+: dma-free " dma-free" $call-parent ;
+: dma-sync " dma-sync" $call-parent ;
+: dma-map-in " dma-map-in" $call-parent ;
+: dma-map-out " dma-map-out" $call-parent ;
+
+new-device
+
+" disk" device-name
+
+" block" device-type
+
+: ata-command " ata-command" $call-parent ;
+: atapi-command " atapi-command" $call-parent ;
+: wait-bsy " wait-bsy" $call-parent ;
+
+: get-my-protocols " get-my-protocols" $call-parent ;
+
+: disk-present? " disk-present?" $call-parent ;
+: our-bus-id 2 ; \ the OF pata impl I looked at returned 2. I am not sure what to do here
+
+\ lots of the ata-disk and atapi-disk methods are very easy to implement on SATA :)
+
+: dev@ 0 ; \ SATA only has dev 0 (unless chipset specifically merges 2 buses)
+: set-drive-select ;
+
+: use-atapi-interface ; \ I will assume this is pointless until proven otherwise
+
+: set-my-multiple drop ; \ probably useless
+
+: set-ultra-timer drop ;
+: set-dma-timer drop ;
+: set-pio-timer drop ;
+
+: my-max-ultra 7 ;
+
+: open 
+	disk-present? 0= if false exit then
+	get-my-protocols 2 = 
+	if " atapi-disk" else " ata-disk" then
+	find-package if 
+		my-args rot " interpose" evaluate \ I'm not sure tokenizer supports "interpose"
+	else
+		false exit
+	then
 	true
 ;
 

@@ -1,0 +1,223 @@
+\ interface.of
+\ this file handles requests by /packages/ata-disk and /packages/atapi-disk
+
+0 value req.data.addr
+0 value req.data.len
+0 value req.read?
+0 value req.ata-addr
+0 value req.cdb-addr
+0 value req.timeout
+0 value req.#retries
+0 value req.port#
+0 value req.result ( 0 if success, -1 if fail, -2 if timeout )
+0 value req.buf.cpu-addr
+0 value req.buf.dev-addr
+
+struct D constant /ata ( main ata buffer )
+	1 field >ata.48b-lba?
+	1 field >ata.features
+	1 field >ata.count
+	1 field >ata.lba.lo
+	1 field >ata.lba.mid
+	1 field >ata.lba.hi
+	1 field >ata.devicehead
+	1 field >ata.command
+	1 field >ata.x.count
+	1 field >ata.x.lba.lo
+	1 field >ata.x.lba.mid
+	1 field >ata.x.lba.hi
+	1 field >ata.x.command \ if 48-bit use this instead of .command
+/ata <> throw
+
+C constant /cdb ( atapi packet )
+
+: port-disk-present? \ returns 1 if present, 0 if not
+	disk-present swap 3 << >> ff and
+;
+
+: port-protocols ( port# -- protocol# ) \ returns 1 if ata, returns 2 if atapi
+	disk-protocols swap 3 << >> ff and
+;
+
+: port-wait-bsy
+	select-port
+	wait-for-ready
+;
+
+: handle-error ( -- fatal? )
+	portregs >pr.cmd.error rl@
+	" handle-error: " dup .d 20 emit req.ata-addr /ata " dump" evaluate cr
+	case 
+		d# 01 of 1 endof \ DEVICEERROR
+		d# 02 of 1 endof \ SDBERROR
+		d# 03 of 1 endof \ DATAFISERROR
+		d# 04 of 2 endof \ SENDFISERROR
+		d# 05 of 2 endof \ INCONSISTENTSTATE
+		d# 06 of 3 endof \ DIRECTIONERROR
+		d# 07 of 3 endof \ UNDERRUNERROR
+		d# 08 of 3 endof \ OVERRUNERROR
+		d# 09 of 3 endof \ LINKFIFOOVERRUN
+		d# 11 of 3 endof \ PACKETPROTOCOLERROR
+		d# 16 of 3 endof \ PLDSGTERRORBOUNDARY
+		d# 17 of 2 endof \ PLDSGTERRORTARGETABORT
+		d# 18 of 2 endof \ PLDSGTERRORMASTERABORT
+		d# 19 of 2 endof \ PLDSGTERRORPCIPERR
+		d# 24 of 3 endof \ PLDCMDTERRORBOUNDARY
+		d# 25 of 2 endof \ PLDCMDTERRORTARGETABORT
+		d# 26 of 2 endof \ PLDCMDTERRORMASTERABORT
+		d# 27 of 2 endof \ PLDCMDTERRORPCIERROR
+		d# 33 of 2 endof \ PSDERRORTARGETABORT
+		d# 34 of 2 endof \ PSDERRORMASTERABORT
+		d# 35 of 2 endof \ PSDERRORPCIPERR
+		d# 36 of 2 endof \ SENDSERVICEERROR
+		
+		dup of 3 endof \ if error code unknown, it is fatal
+	endcase
+	
+	case
+		1 of port-initialize false endof
+		2 of port-reset false endof
+		3 of port-reset true endof
+	endcase
+;
+
+: command
+	" command" type cr
+	-1 to req.result \ assume failure unless proven otherwise
+	req.data.len ?dup if
+		dma-alloc ?dup 0= if exit then \ I sure hope this is 8-byte aligned
+		dup to req.buf.cpu-addr
+		req.data.len true dma-map-in
+		?dup 0= if req.buf.cpu-addr req.data.len dma-free exit then
+		to req.buf.dev-addr
+		
+		req.read? 0= if
+			req.data.addr req.buf.cpu-addr req.data.len move
+			req.buf.cpu-addr req.buf.dev-addr req.data.len dma-sync
+		then
+		
+	else
+		0 to req.buf.cpu-addr
+		0 to req.buf.dev-addr
+	then
+	
+	req.port# select-port
+	
+	prb-cpu /prb erase
+	
+	req.cdb-addr if \ if packet command
+		req.data.len if
+			req.read? if
+				prb-packet-read
+			else
+				prb-packet-write
+			then
+				wbflip prb-cpu >prb.control w!
+		then
+	then
+	
+	8027 ( command mode & Register - Host to Device FIS )
+	wbflip prb-cpu >prb.fis-core w!
+	
+	req.ata-addr >ata.features   c@ prb-cpu >prb.ide.features   c!
+	req.ata-addr >ata.count      c@ prb-cpu >prb.ide.sector-cnt c!
+	req.ata-addr >ata.lba.lo     c@ prb-cpu >prb.ide.sector#    c!
+	req.ata-addr >ata.lba.mid    c@ prb-cpu >prb.ide.cyl.lo     c!
+	req.ata-addr >ata.lba.hi     c@ prb-cpu >prb.ide.cyl.hi     c!
+	req.ata-addr >ata.devicehead c@ prb-cpu >prb.ide.head       c!
+	
+	req.ata-addr >ata.48b-lba? c@ if
+		req.ata-addr >ata.x.count   c@ prb-cpu >prb.ide.sector-cnt.exp c!
+		req.ata-addr >ata.x.lba.lo  c@ prb-cpu >prb.ide.sector#.exp    c!
+		req.ata-addr >ata.x.lba.mid c@ prb-cpu >prb.ide.cyl.lo         c!
+		req.ata-addr >ata.x.lba.hi  c@ prb-cpu >prb.ide.cyl.hi         c!
+		
+		req.ata-addr >ata.x.command c@ prb-cpu >prb.ide.command		   c!
+	else
+		req.ata-addr >ata.command   c@ prb-cpu >prb.ide.command        c!
+	then
+	
+	req.cdb-addr ?dup if \ copy cdb to prb if needed
+		prb-cpu >prb.sge0 /cdb move
+	
+		prb-cpu >prb.sge1
+	else
+		prb-cpu >prb.sge0
+	then
+	
+	req.buf.dev-addr	lbflip over >sge.adr.lo l!
+	req.data.len  		lbflip over >sge.cnt    l!
+	sge-trm				lbflip swap >sge.flags  l!
+	
+	\ and that's the prb filled, now to send it
+	
+	sync-prb
+	
+	begin
+		wait-for-ready
+		
+		-1 portregs >pr.interrupt.status rl!
+		
+		" command: sending prb" type cr
+		/prb 0 do prb-cpu I + l@ lbflip portregs >pr.commands 0 >slot I + rl! 4 +loop
+		\ can't have sil3124 directly fetch prb, because then it fetches the sges after the prb, not the ones in it
+		
+		0 portregs >pr.cmd.fifo rl! \ activate prb
+		
+		\ prb-dev portregs 0 >slot-car rl!
+		
+		begin
+			" command: looping" type cr
+			portregs >pr.interrupt.status rl@ 30003 and
+			10 ms
+		until \ loop until command completion or error interrupts are set
+		
+		portregs >pr.interrupt.status rl@ 20000 and
+		portregs >pr.slot-status rl@ 80000000 and or if \ if attention or command error is set, an error occured
+		
+			" command: error" type cr
+			handle-error req.#retries 0= or if
+				" command: fatal" type cr
+				port-initialize
+				true
+			else
+				" command: retrying" type cr
+				req.#retries 1- to req.#retries
+				false
+			then
+		else
+			" command: success" type cr
+			0 to req.result
+			true
+		then
+	until
+	
+	req.data.len if 
+		req.read? req.result 0= and if
+			req.buf.cpu-addr req.buf.dev-addr req.data.len dma-sync
+			req.buf.cpu-addr req.data.addr req.data.len move
+		then
+		
+		req.buf.cpu-addr req.buf.dev-addr req.data.len dma-map-out
+		req.buf.cpu-addr req.data.len dma-free
+		0 to req.buf.cpu-addr
+		0 to req.buf.dev-addr
+	then
+	" command: done" type cr
+	-1 portregs >pr.interrupt.status rl!
+;
+
+: port-ata-command ( data-addr data-len read? cmd-addr timeout #retries port# -- fail? )
+	" port-ata-command" type cr
+	to req.port# to req.#retries to req.timeout to req.ata-addr to req.read? to req.data.len to req.data.addr
+	0 to req.cdb-addr
+	command
+	req.result
+;
+
+: port-atapi-command ( data-addr data-len read? cdb-addr cmd-addr timeout #retries port# -- fail? )
+	" port-atapi-command" type cr
+	to req.port# to req.#retries to req.timeout to req.ata-addr to req.cdb-addr to req.read? to req.data.len to req.data.addr
+	command
+	req.result
+;
